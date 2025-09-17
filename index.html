@@ -1,0 +1,591 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <title>AI Prompt Database</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <style>
+            :root {
+                --bg-main: #181c20;
+                --bg-card: #23272c;
+                --bg-modal: #272b30;
+                --bg-detail: #21252b;
+                --accent: #3997ed;
+                --text-main: #eceeee;
+                --text-secondary: #b6bac1;
+                --prompt-main: #323a45;
+                --prompt-secondary: #303943;
+                --final: #355378;
+                --shadow: 0 2px 10px #000a;
+                --expand-btn-svg-size: 30px;
+            }
+            body {
+                font-family: Arial, sans-serif;
+                background: var(--bg-main);
+                margin: 0;
+                color: var(--text-main);
+                box-sizing: border-box;
+            }
+            .container {
+                /* max-width: 700px; */
+                margin: auto;
+                padding: 2em;
+                /* padding: 2em; */
+                /* display: flex; */
+                /* flex-direction: row;
+                flex-wrap: wrap; */
+                /* align-content: center; */
+                justify-content: center;
+            }
+            #cardsContainer {
+                display: flex;
+                flex-direction: row;
+                flex-wrap: wrap;
+                align-content: center;
+                justify-content: space-evenly;
+                align-items: center;
+                column-gap: 0.25rem;
+            }
+            .plus-btn {
+                font-size: 2em;
+                width: 45px;
+                height: 45px;
+                border-radius: 50%;
+                border: none;
+                background: var(--accent);
+                color: #fff;
+                cursor: pointer;
+                margin-bottom: 1em;
+            }
+            .card {
+                background: var(--bg-card);
+                box-shadow: var(--shadow);
+                border-radius: 10px;
+                overflow: hidden;
+                position: relative;
+                margin-bottom: 2em;
+                /* text-align: center; */
+                display: flex;
+                flex-direction: column;
+                align-content: center;
+                align-items: center;
+                justify-content: center;
+                flex-wrap: wrap;
+            }
+            .card img {
+                display: block;
+                width: auto;
+                max-width: 100%;
+                height: 400px;
+                object-fit: contain;
+                background: #111;
+                margin-top: 1rem;
+                border-radius: 0.5rem;
+            }
+            .card .title {
+                padding-block: 0.75rem;
+                padding-inline: 1rem;
+                font-weight: 700;
+                font-size: 1.25em;
+                color: var(--accent);
+                width: 100%;
+                display: flex;
+                flex-direction: row;
+                flex-wrap: wrap;
+                align-content: center;
+                justify-content: space-around;
+                align-items: center;
+                text-align: center;
+            }
+            .expand-btn {
+                /* position: absolute;
+                top: 50%;
+                transform: translateY(-50%);
+                right: 5%; */
+                background: none;
+                border: none;
+                /* padding: 0.5em; */
+                cursor: pointer;
+                font-size: 1.5em;
+                color: var(--accent);
+                display: flex;
+                align-content: center;
+                justify-content: center;
+                align-items: center;
+                flex-wrap: wrap;
+                padding: 0;
+            }
+            .expand-btn svg {
+                width: var(--expand-btn-svg-size);
+                height: var(--expand-btn-svg-size);
+            }
+            .rotate-svg-180 {
+                transform: rotate(180deg);
+                transform-origin: 50% 50%;
+            }
+
+            .modal {
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background: rgba(20, 23, 28, 0.7);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                z-index: 111;
+            }
+            .modal-content {
+                background: var(--bg-modal);
+                border-radius: 10px;
+                padding: 2em;
+                min-width: 320px;
+                position: relative;
+                color: var(--text-main);
+                box-shadow: var(--shadow);
+            }
+            #photoInput {
+                margin-block: 1rem;
+            }
+            .close {
+                position: absolute;
+                top: 12px;
+                right: 15px;
+                font-size: 2em;
+                color: #aaa;
+                cursor: pointer;
+            }
+            textarea {
+                width: 100%;
+                min-height: 60px;
+                margin-bottom: 10px;
+                font-size: 1em;
+                resize: vertical;
+                box-sizing: border-box;
+                background: var(--bg-detail);
+                color: var(--text-main);
+                border: 1px solid #222;
+                border-radius: 6px;
+            }
+            .small-area {
+                min-height: 45px;
+                font-size: 0.95em;
+            }
+            input[type="text"] {
+                width: 100%;
+                margin-bottom: 1em;
+                font-size: 1em;
+                box-sizing: border-box;
+                background: var(--bg-detail);
+                color: var(--text-main);
+                border: 1px solid #222;
+                border-radius: 6px;
+            }
+            label {
+                color: var(--accent);
+                font-weight: 500;
+            }
+            #submitPromptBtn {
+                background: var(--accent);
+                color: #fff;
+                padding: 0.75em 1.3em;
+                font-size: 1em;
+                border: none;
+                border-radius: 6px;
+                cursor: pointer;
+            }
+            .hidden {
+                display: none !important;
+            }
+            .title {
+                position: relative;
+            }
+            @media (max-width: 600px) {
+                .container {
+                    padding: 0.5em;
+                }
+            }
+            .card-details {
+                border-top: 1px solid #222;
+                background: var(--bg-detail);
+                font-size: 1em;
+                display: flex;
+                flex-direction: column;
+                gap: 0.65em;
+                transition: max-height 0.25s cubic-bezier(0.65, 0, 0.35, 1);
+                max-height: 0;
+                overflow: hidden;
+                width: 95%;
+            }
+            .card-details.expanded {
+                display: flex;
+                max-height: 400px;
+                padding-bottom: 1em;
+                width: 95%;
+            }
+            .main-prompt {
+                background: var(--prompt-main);
+                color: var(--text-main);
+                border-radius: 7px;
+                padding: 0.45em 0.7em;
+                font-family: monospace;
+                font-size: 1em;
+            }
+            .secondary-prompt {
+                background: var(--prompt-secondary);
+                color: var(--text-secondary);
+                border-radius: 7px;
+                padding: 0.3em 0.7em;
+                font-size: 0.97em;
+                font-family: monospace;
+            }
+            .final-prompt {
+                background: var(--final);
+                color: #fff;
+                border-left: 4px solid var(--accent);
+                border-radius: 7px;
+                padding: 0.3em 0.7em;
+                font-size: 1em;
+                font-family: monospace;
+                cursor: pointer;
+                transition: background 0.2s;
+            }
+            .final-prompt.copied,
+            .main-prompt.copied,
+            .secondary-prompt.copied {
+                background: #228c52;
+            }
+            .prompt-labels {
+                padding: 0.45em 0.7em;
+                font-family: monospace;
+                font-size: 1em;
+            }
+            .empty-textfield {
+                display: none;
+            }
+        </style>
+        <script src="https://www.gstatic.com/firebasejs/12.0.0/firebase-app-compat.js"></script>
+        <script src="https://www.gstatic.com/firebasejs/12.0.0/firebase-firestore-compat.js"></script>
+    </head>
+    <body>
+        <div class="container">
+            <button id="addPromptBtn" class="plus-btn" title="Add new prompt">
+                +
+            </button>
+            <div id="cardsContainer"></div>
+        </div>
+        <div id="modal" class="modal hidden">
+            <div class="modal-content">
+                <span id="closeModal" class="close">&times;</span>
+                <h2 style="margin-top: 0; color: var(--accent)">
+                    Add New Prompt
+                </h2>
+                <form id="modalForm" autocomplete="off">
+                    <label for="photoInput">Photo (jpg, png, webp):</label
+                    ><br />
+                    <input
+                        type="file"
+                        id="photoInput"
+                        accept="image/png,image/jpeg,image/webp"
+                    /><br />
+                    <label>Title</label>
+                    <input type="text" id="titleInput" /><br />
+                    <label>Main Prompt</label>
+                    <textarea id="mainPromptInput" spellcheck="false"></textarea
+                    ><br />
+                    <label>Prompt Additions</label>
+                    <textarea
+                        id="secondaryPromptInput"
+                        spellcheck="false"
+                        class="small-area"
+                    ></textarea
+                    ><br />
+                    <button id="submitPromptBtn" type="submit">Add</button>
+                </form>
+            </div>
+        </div>
+        <script>
+            document.addEventListener("DOMContentLoaded", function () {
+                // Firebase config fill in as needed
+                const firebaseConfig = {
+                    apiKey: "AIzaSyBGM_ws-4leOmvLLzIEU62y36cHLjYeezQ",
+                    authDomain: "my-bookmarks-01.firebaseapp.com",
+                    projectId: "my-bookmarks-01",
+                    storageBucket: "my-bookmarks-01.firebasestorage.app",
+                    messagingSenderId: "202931759065",
+                    appId: "1:202931759065:web:ccfa3cf456370d839a5bc8",
+                };
+                firebase.initializeApp(firebaseConfig);
+                const db = firebase.firestore();
+
+                /* function fileToBase64(file) {
+                    return new Promise((resolve) => {
+                        const reader = new FileReader();
+                        reader.onload = () => resolve(reader.result);
+                        reader.readAsDataURL(file);
+                    });
+                } */
+                function fileToBase64(file) {
+                    return new Promise((resolve, reject) => {
+                        const reader = new FileReader();
+                        reader.onload = () => {
+                            const img = new Image();
+                            img.onload = () => {
+                                const canvas = document.createElement('canvas');
+                                const targetHeight = 800;
+                                const aspectRatio = img.width / img.height;
+                                canvas.height = targetHeight;
+                                canvas.width = targetHeight * aspectRatio;
+                                const ctx = canvas.getContext('2d');
+                                ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                                // You can adjust the JPEG quality here (0.1 to 1)
+                                const resizedBase64 = canvas.toDataURL('image/jpeg', 1);
+                                resolve(resizedBase64);
+                            };
+                            img.onerror = reject;
+                            img.src = reader.result;
+                        };
+                        reader.onerror = reject;
+                        reader.readAsDataURL(file);
+                    });
+                }
+
+
+                const cardsContainer =
+                    document.getElementById("cardsContainer");
+                const modal = document.getElementById("modal");
+                const addPromptBtn = document.getElementById("addPromptBtn");
+                const closeModalBtn = document.getElementById("closeModal");
+                const modalForm = document.getElementById("modalForm");
+                const expandSvg = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-6 h-6 transform transition-transform" id="arrowSvg">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+                </svg>`;
+                const collapseSvg = `<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>`;
+
+                function showModal() {
+                    modal.classList.remove("hidden");
+                }
+                function hideModal() {
+                    modal.classList.add("hidden");
+                }
+
+                addPromptBtn.addEventListener("click", showModal);
+                closeModalBtn.addEventListener("click", hideModal);
+                window.addEventListener("keydown", function (e) {
+                    if (e.key === "Escape") {
+                        hideModal();
+                    }
+                });
+
+                modalForm.addEventListener("submit", async function (event) {
+                    event.preventDefault();
+                    let isSecondPromptEmpty = false;
+                    const photoFile =
+                        document.getElementById("photoInput").files[0];
+                    const title = document
+                        .getElementById("titleInput")
+                        .value.trim();
+                    const mainPrompt = document
+                        .getElementById("mainPromptInput")
+                        .value.trim();
+                    const secondaryPrompt = document
+                        .getElementById("secondaryPromptInput")
+                        .value.trim();
+                    if (secondaryPrompt == "") {isSecondPromptEmpty = true;}
+                    if (!photoFile || !title || !mainPrompt) {
+                        alert("Photo, Title, and Main Prompt are required.");
+                        return;
+                    }
+                    const photoBase64 = await fileToBase64(photoFile);
+                    navigator.clipboard.writeText(photoBase64);
+
+                    const newDoc = {
+                        photo: photoBase64,
+                        title,
+                        mainPrompt,
+                        secondaryPrompt,
+                    };
+                    db.collection("prompts")
+                        .add(newDoc)
+                        .then((docRef) => {
+                            renderCard(newDoc, docRef.id, isSecondPromptEmpty);
+                            modalForm.reset();
+                            hideModal();
+                        });
+                });
+
+                function hideEmptyTextFields(element) {
+                    element.classList.add("empty-textfield");
+                }
+
+                function renderCard(docData, id, isSecondPromptEmpty) {
+                    const img = new Image();
+                    img.src = docData.photo;
+                    img.onload = function () {
+                        const aspectRatio =
+                            img.naturalWidth / img.naturalHeight;
+                        const width = Math.round(400 * aspectRatio);
+                        const cardDiv = document.createElement("div");
+                        cardDiv.className = "card";
+                        const imgTag = document.createElement("img");
+                        imgTag.src = docData.photo;
+                        imgTag.style.height = "400px";
+                        imgTag.style.width = width + "px";
+                        cardDiv.appendChild(imgTag);
+                        const titleDiv = document.createElement("div");
+                        titleDiv.className = "title";
+                        titleDiv.textContent = docData.title;
+                        cardDiv.appendChild(titleDiv);
+
+                        // Expand/Collapse Button
+                        const expandBtn = document.createElement("button");
+                        expandBtn.className = "expand-btn";
+                        expandBtn.setAttribute("aria-expanded", "false");
+                        expandBtn.innerHTML = expandSvg; // Down arrow
+                        //cardDiv.appendChild(expandBtn);
+                        titleDiv.appendChild(expandBtn);
+
+                        // Details Panel
+                        const detailsDiv = document.createElement("div");
+                        detailsDiv.className = "card-details";
+                        detailsDiv.setAttribute("aria-hidden", "true");
+
+                        // Main prompt
+                        const mainPromptLabel = document.createElement("span");
+                        mainPromptLabel.className = "prompt-labels";
+                        mainPromptLabel.textContent = "Main Prompt";
+                        detailsDiv.appendChild(mainPromptLabel);
+
+                        const mainPromptSpan = document.createElement("span");
+                        mainPromptSpan.className = "main-prompt";
+                        mainPromptSpan.textContent = docData.mainPrompt;
+                        addCopyClick(mainPromptSpan);
+                        detailsDiv.appendChild(mainPromptSpan);
+
+                        // Secondary prompt
+                        const secondPromptLabel = document.createElement("span");
+                        secondPromptLabel.className = "prompt-labels";
+                        secondPromptLabel.textContent = "Secondary Prompt";
+                        detailsDiv.appendChild(secondPromptLabel);
+
+                        const secondaryPromptSpan =
+                            document.createElement("span");
+                        secondaryPromptSpan.className = "secondary-prompt";
+                        secondaryPromptSpan.textContent =
+                            docData.secondaryPrompt;
+                        addCopyClick(secondaryPromptSpan);
+                        detailsDiv.appendChild(secondaryPromptSpan);
+
+                        // Final prompt: main prompt + newline + secondary prompt
+                        const finalPromptLabel = document.createElement("span");
+                        finalPromptLabel.className = "prompt-labels";
+                        finalPromptLabel.textContent = "Final Prompt";
+                        detailsDiv.appendChild(finalPromptLabel);
+
+                        const finalPromptDiv = document.createElement("span");
+                        finalPromptDiv.className = "final-prompt";
+                        finalPromptDiv.textContent =
+                            docData.mainPrompt + "\n" + docData.secondaryPrompt;
+                        addCopyClick(finalPromptDiv);
+                        //finalPromptDiv.title = "Click to copy";
+                        detailsDiv.appendChild(finalPromptDiv);
+
+                        if (isSecondPromptEmpty) {
+                            hideEmptyTextFields(secondPromptLabel);
+                            hideEmptyTextFields(secondaryPromptSpan);
+                            hideEmptyTextFields(finalPromptLabel);
+                            hideEmptyTextFields(finalPromptDiv);
+                        }
+
+                        /* // Copy to clipboard
+                        finalPromptDiv.onclick = function () {
+                            navigator.clipboard
+                                .writeText(finalPromptDiv.textContent)
+                                .then(() => {
+                                    finalPromptDiv.classList.add("copied");
+                                    setTimeout(
+                                        () =>
+                                            finalPromptDiv.classList.remove(
+                                                "copied"
+                                            ),
+                                        1000
+                                    );
+                                });
+                        }; */
+
+                        // Initial collapse
+                        detailsDiv.classList.remove("expanded");
+                        detailsDiv.style.maxHeight = "0";
+                        detailsDiv.setAttribute("aria-hidden", "true");
+                        cardDiv.appendChild(detailsDiv);
+
+                        // Expand/collapse toggle
+                        expandBtn.onclick = function () {
+                            if (detailsDiv.classList.contains("expanded")) {
+                                detailsDiv.classList.remove("expanded");
+                                detailsDiv.style.maxHeight = "0";
+                                detailsDiv.setAttribute("aria-hidden", "true");
+                                //expandBtn.innerHTML = expandSvg;
+                                const svg1 = expandBtn.querySelector('svg');
+                                svg1.classList.remove('rotate-svg-180');
+                                expandBtn.setAttribute(
+                                    "aria-expanded",
+                                    "false"
+                                );
+                            } else {
+                                detailsDiv.classList.add("expanded");
+                                detailsDiv.style.maxHeight =
+                                    detailsDiv.scrollHeight + "px";
+                                detailsDiv.setAttribute("aria-hidden", "false");
+                                //expandBtn.innerHTML = collapseSvg;
+                                const svg2 = expandBtn.querySelector('svg');
+                                svg2.classList.add('rotate-svg-180');
+                                //expandBtn.classList.add('rotate-svg-180');
+                                expandBtn.setAttribute("aria-expanded", "true");
+                            }
+                        };
+
+                        cardsContainer.appendChild(cardDiv);
+                    };
+                }
+
+                hideModal(); // Ensure modal hidden at start
+                db.collection("prompts")
+                    .get()
+                    .then((querySnapshot) => {
+                        querySnapshot.forEach((doc) => {
+                            let isSecondPromptEmpty = false;
+                            if (doc.data().secondaryPrompt == "") {
+                                isSecondPromptEmpty = true;
+
+                            }
+                            renderCard(doc.data(), doc.id, isSecondPromptEmpty);
+                        });
+                    });
+                // Copy to clipboard helper with feedback
+                function addCopyClick(element) {
+                    element.style.cursor = "pointer";
+                    element.title = "Click to copy";
+                    element.onclick = () => {
+                        navigator.clipboard
+                            .writeText(element.textContent)
+                            .then(() => {
+                                element.classList.add("copied");
+                                setTimeout(
+                                    () => element.classList.remove("copied"),
+                                    200
+                                );
+                            });
+                    };
+                }
+                
+                
+
+
+            });
+        </script>
+    </body>
+</html>
