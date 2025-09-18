@@ -46,6 +46,13 @@
                 align-items: center;
                 column-gap: 0.25rem;
             }
+            .addBtn-container {
+                display: flex;
+                align-items: center;
+                align-content: center;
+                flex-wrap: wrap;
+                position: relative;
+            }
             .plus-btn {
                 font-size: 2em;
                 width: 45px;
@@ -55,7 +62,15 @@
                 background: var(--accent);
                 color: #fff;
                 cursor: pointer;
-                margin-bottom: 1em;
+                margin-block: 0.5em;
+            }
+            #prompt-count-text {
+                position: absolute;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                color: #8fb1cf;
+                font-weight: 700;
             }
             .card {
                 background: var(--bg-card);
@@ -86,7 +101,8 @@
                 padding-block: 0.75rem;
                 padding-inline: 1rem;
                 font-weight: 700;
-                font-size: 1.25em;
+                /* font-size: 1.25em; */
+                font-size: 1rem;
                 color: var(--accent);
                 width: 100%;
                 display: flex;
@@ -133,8 +149,9 @@
                 background: rgba(20, 23, 28, 0.7);
                 display: flex;
                 align-items: center;
-                justify-content: center;
+                justify-content: flex-start;
                 z-index: 111;
+                flex-direction: column;
             }
             .modal-content {
                 background: var(--bg-modal);
@@ -145,8 +162,25 @@
                 color: var(--text-main);
                 box-shadow: var(--shadow);
             }
+            #modalForm input {
+                padding-block: 0.25rem;
+                padding-inline: 0.5rem;
+                font-size: 0.875rem;
+            }
+            #modalForm textarea {
+                margin-top: 0.15rem;
+            }
             #photoInput {
                 margin-block: 1rem;
+            }
+            #aiNameInput, #modelNameInput {
+                margin-bottom: 1em;
+                box-sizing: border-box;
+                background: var(--bg-detail);
+                color: var(--text-main);
+                border: 1px solid #222;
+                border-radius: 6px;
+    
             }
             .close {
                 position: absolute;
@@ -264,15 +298,39 @@
             .empty-textfield {
                 display: none;
             }
+            .aiNameModelDiv {
+                display: flex;
+                flex-direction: row;
+                flex-wrap: wrap;
+                align-content: center;
+                justify-content: flex-start;
+                align-items: center;
+                padding-inline: 0.5rem;
+                column-gap: 1rem;
+            }
+            .ai-name, .model-name {
+                font-weight: bold;
+                color: #2c4677;
+                padding: 0.23em 0.7em;
+                background: #eef4fc;
+                border-radius: 7px;
+                font-size: 1em;
+                display: inline-block;
+                /* margin-bottom:2px; */
+            }
+
         </style>
         <script src="https://www.gstatic.com/firebasejs/12.0.0/firebase-app-compat.js"></script>
         <script src="https://www.gstatic.com/firebasejs/12.0.0/firebase-firestore-compat.js"></script>
     </head>
     <body>
         <div class="container">
-            <button id="addPromptBtn" class="plus-btn" title="Add new prompt">
-                +
-            </button>
+            <div class="addBtn-container">
+                <button id="addPromptBtn" class="plus-btn" title="Add new prompt">+</button>
+                <div id="prompt-count-text"></div>
+
+            </div>
+            
             <div id="cardsContainer"></div>
         </div>
         <div id="modal" class="modal hidden">
@@ -291,6 +349,25 @@
                     /><br />
                     <label>Title</label>
                     <input type="text" id="titleInput" /><br />
+                    <label>AI Name</label>
+            
+                    <input list="ai-names" id="aiNameInput" />
+                    <datalist id="ai-names">
+                        <option value="Gemini">
+                        <option value="Chat-GPT">
+                        <option value="Midjourney">
+                        <option value="Leonardo AI">
+                    </datalist><br />
+
+                    <label>Model Name</label>
+                    <input list="model-names" id="modelNameInput"/>
+                    <datalist id="model-names">
+                        <option value="2.5 Flash">
+                        <option value="2.5 Pro">
+                        <option value="GPT-4o mini">
+                        <option value="GPT-5 mini">
+                    </datalist><br />
+
                     <label>Main Prompt</label>
                     <textarea id="mainPromptInput" spellcheck="false"></textarea
                     ><br />
@@ -318,6 +395,8 @@
                 };
                 firebase.initializeApp(firebaseConfig);
                 const db = firebase.firestore();
+                let firestoreUploadDownscaledHeight = 600;
+                let promptsCount = 0;
 
                 /* function fileToBase64(file) {
                     return new Promise((resolve) => {
@@ -333,7 +412,7 @@
                             const img = new Image();
                             img.onload = () => {
                                 const canvas = document.createElement('canvas');
-                                const targetHeight = 800;
+                                const targetHeight = firestoreUploadDownscaledHeight;
                                 const aspectRatio = img.width / img.height;
                                 canvas.height = targetHeight;
                                 canvas.width = targetHeight * aspectRatio;
@@ -358,6 +437,7 @@
                 const addPromptBtn = document.getElementById("addPromptBtn");
                 const closeModalBtn = document.getElementById("closeModal");
                 const modalForm = document.getElementById("modalForm");
+                const promptsCountText = document.getElementById("prompt-count-text");
                 const expandSvg = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-6 h-6 transform transition-transform" id="arrowSvg">
                     <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
                 </svg>`;
@@ -388,6 +468,9 @@
                     const title = document
                         .getElementById("titleInput")
                         .value.trim();
+                    const aiName = document.getElementById("aiNameInput").value || "";
+                    const modelName = document.getElementById("modelNameInput").value || "";
+
                     const mainPrompt = document
                         .getElementById("mainPromptInput")
                         .value.trim();
@@ -404,9 +487,12 @@
 
                     const newDoc = {
                         photo: photoBase64,
+                        aiName,
+                        modelName,
                         title,
                         mainPrompt,
                         secondaryPrompt,
+                        timestamp: Date.now()
                     };
                     db.collection("prompts")
                         .add(newDoc)
@@ -414,11 +500,16 @@
                             renderCard(newDoc, docRef.id, isSecondPromptEmpty);
                             modalForm.reset();
                             hideModal();
+                            promptsCount++;
+                            updatePromptsCount();
                         });
                 });
 
                 function hideEmptyTextFields(element) {
                     element.classList.add("empty-textfield");
+                }
+                function updatePromptsCount() {
+                    promptsCountText.textContent = `Prompts Count: ${promptsCount}`;
                 }
 
                 function renderCard(docData, id, isSecondPromptEmpty) {
@@ -452,6 +543,24 @@
                         const detailsDiv = document.createElement("div");
                         detailsDiv.className = "card-details";
                         detailsDiv.setAttribute("aria-hidden", "true");
+                        
+                        const aiNameModelDiv = document.createElement("div");
+                        aiNameModelDiv.className = "aiNameModelDiv";
+
+                        // Ai Name
+                        const aiNameDiv = document.createElement("div");
+                        aiNameDiv.className = "ai-name";
+                        aiNameDiv.textContent = docData.aiName || "";
+                        aiNameModelDiv.appendChild(aiNameDiv);
+
+                        // Model Name
+                        const modelNameDiv = document.createElement("div");
+                        modelNameDiv.className = "model-name";
+                        modelNameDiv.textContent = docData.modelName || "";
+                        aiNameModelDiv.appendChild(modelNameDiv);
+
+                        detailsDiv.appendChild(aiNameModelDiv);
+
 
                         // Main prompt
                         const mainPromptLabel = document.createElement("span");
@@ -468,7 +577,7 @@
                         // Secondary prompt
                         const secondPromptLabel = document.createElement("span");
                         secondPromptLabel.className = "prompt-labels";
-                        secondPromptLabel.textContent = "Secondary Prompt";
+                        secondPromptLabel.textContent = "Prompt Additions";
                         detailsDiv.appendChild(secondPromptLabel);
 
                         const secondaryPromptSpan =
@@ -548,15 +657,21 @@
                             }
                         };
 
-                        cardsContainer.appendChild(cardDiv);
+                        //cardsContainer.appendChild(cardDiv);
+                        cardsContainer.prepend(cardDiv);
+
                     };
                 }
 
                 hideModal(); // Ensure modal hidden at start
                 db.collection("prompts")
+                    .orderBy('timestamp', 'asc')
                     .get()
                     .then((querySnapshot) => {
+                        promptsCount = 0;
                         querySnapshot.forEach((doc) => {
+                            promptsCount++;
+                            
                             let isSecondPromptEmpty = false;
                             if (doc.data().secondaryPrompt == "") {
                                 isSecondPromptEmpty = true;
@@ -564,6 +679,7 @@
                             }
                             renderCard(doc.data(), doc.id, isSecondPromptEmpty);
                         });
+                        updatePromptsCount();
                     });
                 // Copy to clipboard helper with feedback
                 function addCopyClick(element) {
