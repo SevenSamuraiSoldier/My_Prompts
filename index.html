@@ -665,7 +665,7 @@
 
                 hideModal(); // Ensure modal hidden at start
                 db.collection("prompts")
-                    .orderBy('timestamp', 'asc')
+                    .orderBy('title', 'desc')
                     .get()
                     .then((querySnapshot) => {
                         promptsCount = 0;
@@ -705,3 +705,4 @@
         </script>
     </body>
 </html>
+
