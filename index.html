@@ -173,7 +173,7 @@
             #photoInput {
                 margin-block: 1rem;
             }
-            #aiNameInput, #modelNameInput {
+            #aiNameInput, #modelNameInput, #editModalForm Input {
                 margin-bottom: 1em;
                 box-sizing: border-box;
                 background: var(--bg-detail);
@@ -220,7 +220,7 @@
                 color: var(--accent);
                 font-weight: 500;
             }
-            #submitPromptBtn {
+            #submitPromptBtn, #updatePromptBtn {
                 background: var(--accent);
                 color: #fff;
                 padding: 0.75em 1.3em;
@@ -318,6 +318,49 @@
                 display: inline-block;
                 /* margin-bottom:2px; */
             }
+            #editModalForm Input {
+                margin-bottom: 1rem;
+            }
+            .editDelBtnDiv {
+                position: absolute;
+                top: 10px;
+                right: 10px;
+                z-index: 2;
+                display: flex;
+                flex-direction: column;
+                flex-wrap: wrap;
+                align-content: center;
+                justify-content: center;
+                align-items: center;
+                gap: 1.5rem;
+
+            }
+            .edit-btn, .delete-btn {
+                /* position: absolute;
+                top: 10px;
+                right: 10px; */
+                z-index: 2;
+                background: #c9c9c9;
+                border: 1px solid #4a90e2;
+                border-radius: 50%;
+                width: 36px;
+                height: 36px;
+                font-size: 1.3em;
+                color: #4a90e2;
+                cursor: pointer;
+                box-shadow: 0 1px 4px #0002;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                transition: background 0.15s;
+                opacity: 80%;
+            }
+            .delete-btn {color: #ff3b3b; background: #540000;}
+            .edit-btn:hover {
+                background: #e7f1fa;
+                color: #3069a4;
+            }
+
 
         </style>
         <script src="https://www.gstatic.com/firebasejs/12.0.0/firebase-app-compat.js"></script>
@@ -382,6 +425,28 @@
                 </form>
             </div>
         </div>
+        <div id="editModal" class="modal hidden">
+            <div class="modal-content">
+                <span id="closeEditModal" class="close">&times;</span>
+                <h2>Edit Prompt</h2>
+                <form id="editModalForm" autocomplete="off">
+                <label for="editPhotoInput">Photo</label>
+                <input type="file" id="editPhotoInput" accept="image/png, image/jpeg, image/webp"><br/>
+                <label>AI Name</label>
+                <input list="ai-names" id="editAiNameInput"/>
+                <label>Model Name</label>
+                <input list="model-names" id="editModelNameInput"/>
+                <label>Title</label>
+                <input type="text" id="editTitleInput"/><br/>
+                <label>Main Prompt</label>
+                <textarea id="editMainPromptInput" spellcheck="false"></textarea><br/>
+                <label>Secondary Prompt</label>
+                <textarea id="editSecondaryPromptInput" spellcheck="false" class="small-area"></textarea><br/>
+                <button id="updatePromptBtn" type="submit">Update</button>
+                </form>
+            </div>
+        </div>
+
         <script>
             document.addEventListener("DOMContentLoaded", function () {
                 // Firebase config fill in as needed
@@ -397,6 +462,8 @@
                 const db = firebase.firestore();
                 let firestoreUploadDownscaledHeight = 600;
                 let promptsCount = 0;
+                let editingCardElement;
+                let editingPhotoBase64;
 
                 /* function fileToBase64(file) {
                     return new Promise((resolve) => {
@@ -451,6 +518,10 @@
                 function hideModal() {
                     modal.classList.add("hidden");
                 }
+                document.getElementById('closeEditModal').onclick = function() {
+                    document.getElementById('editModal').classList.add('hidden');
+                };
+
 
                 addPromptBtn.addEventListener("click", showModal);
                 closeModalBtn.addEventListener("click", hideModal);
@@ -483,7 +554,7 @@
                         return;
                     }
                     const photoBase64 = await fileToBase64(photoFile);
-                    navigator.clipboard.writeText(photoBase64);
+                    //navigator.clipboard.writeText(photoBase64);
 
                     const newDoc = {
                         photo: photoBase64,
@@ -504,6 +575,53 @@
                             updatePromptsCount();
                         });
                 });
+
+                document.getElementById('editModalForm').onsubmit = async function(e) {
+                    e.preventDefault();
+                    const id = window.editingDocId;
+                    console.log("Updated doc id: " + id);
+                    let isSecondPromptEmpty = false;
+                    const aiName = document.getElementById("editAiNameInput").value || "";
+                    const modelName = document.getElementById("editModelNameInput").value || "";
+                    const title = document.getElementById("editTitleInput").value.trim();
+                    const mainPrompt = document.getElementById("editMainPromptInput").value.trim();
+                    const secondaryPrompt = document.getElementById("editSecondaryPromptInput").value.trim();
+                    // Get original photo unless replaced
+                    let photo = editingPhotoBase64; // you can set this on open
+                    //console.log(photo);
+                    const fileInput = document.getElementById("editPhotoInput");
+                    if(fileInput.files && fileInput.files[0]) {
+                        const photoBase64 = await fileToBase64(fileInput.files[0]);
+                        photo = photoBase64;
+                    }
+                    let timestamp = Date.now();
+                    // Update Firestore
+                    await db.collection("prompts").doc(id).set({
+                        photo, aiName, modelName, title, mainPrompt, secondaryPrompt, timestamp
+                    });
+                    if (secondaryPrompt == "") {isSecondPromptEmpty = true;}
+                    const oldCardElement = editingCardElement;
+                    if (oldCardElement) oldCardElement.remove();
+                    /* const docRef = db.collection("prompts").doc(id); */
+                    db.collection("prompts").doc(id).get().then((doc) => {
+                        if (doc.exists) {
+                            renderCard(doc.data(), doc.id, isSecondPromptEmpty);
+                        }
+                    });
+
+                    // Remove existing card, re-render (or re-render all)
+                    /* cardsContainer.innerHTML = "";
+                    db.collection("prompts").get().orderBy('timestamp', 'asc').then((querySnapshot) => {
+                        querySnapshot.forEach((doc) => {
+                        renderCard(doc.data(), doc.id, isSecondPromptEmpty);
+                        });
+                    }); */
+
+                    document.getElementById('editModal').classList.add('hidden');
+                    // Show a popup message (simple)
+                    alert("Data updated");
+                };
+
 
                 function hideEmptyTextFields(element) {
                     element.classList.add("empty-textfield");
@@ -530,6 +648,25 @@
                         titleDiv.className = "title";
                         titleDiv.textContent = docData.title;
                         cardDiv.appendChild(titleDiv);
+
+                        const editDelBtnDiv = document.createElement("div");
+                        editDelBtnDiv.className = "editDelBtnDiv";
+                        cardDiv.appendChild(editDelBtnDiv);
+
+                        // Edit Button
+                        const editBtn = document.createElement("button");
+                        editBtn.textContent = "✎";
+                        editBtn.title = "Edit";
+                        editBtn.className = "edit-btn";
+                        editDelBtnDiv.appendChild(editBtn);
+
+                        // Edit Button
+                        const deleteBtn = document.createElement("button");
+                        deleteBtn.textContent = "X";
+                        deleteBtn.title = "Delete";
+                        deleteBtn.className = "delete-btn";
+                        editDelBtnDiv.appendChild(deleteBtn);
+
 
                         // Expand/Collapse Button
                         const expandBtn = document.createElement("button");
@@ -656,6 +793,26 @@
                                 expandBtn.setAttribute("aria-expanded", "true");
                             }
                         };
+
+                        editBtn.onclick = () => {
+                            document.getElementById('editModal').classList.remove('hidden');
+                            // Store current doc id being edited (best to use a variable outside renderCard, e.g., window.editingDocId)
+                            window.editingDocId = id;
+                            console.log("Editing doc id: " + id);
+                            editingCardElement = event.target.parentElement.parentElement;
+                            console.log(event.target.parentElement.parentElement);
+
+                            // Pre-fill fields
+                            //console.log(docData.photo);
+                            editingPhotoBase64 = docData.photo;
+                            document.getElementById('editAiNameInput').value = docData.aiName || "";
+                            document.getElementById('editModelNameInput').value = docData.modelName || "";
+                            document.getElementById('editTitleInput').value = docData.title;
+                            document.getElementById('editMainPromptInput').value = docData.mainPrompt;
+                            document.getElementById('editSecondaryPromptInput').value = docData.secondaryPrompt;
+                            // Don't clear photo preview unless they pick a new file.
+                        };
+
 
                         //cardsContainer.appendChild(cardDiv);
                         cardsContainer.prepend(cardDiv);
