@@ -60,9 +60,16 @@
                 border-radius: 50%;
                 border: none;
                 background: var(--accent);
-                color: #fff;
+                color: #dddddd;
                 cursor: pointer;
                 margin-block: 0.5em;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                transition: all 0.2s ease;
+            }
+            .plus-btn svg {
+                fill: #dddddd;
             }
             #prompt-count-text {
                 position: absolute;
@@ -336,12 +343,10 @@
 
             }
             .edit-btn, .delete-btn {
-                /* position: absolute;
-                top: 10px;
-                right: 10px; */
-                z-index: 2;
-                background: #c9c9c9;
-                border: 1px solid #4a90e2;
+                /* background: #dddddd; */
+                background: #5b5b5b;
+                /* border: 1px solid #4a90e2; */
+                border: none;
                 border-radius: 50%;
                 width: 36px;
                 height: 36px;
@@ -352,15 +357,29 @@
                 display: flex;
                 align-items: center;
                 justify-content: center;
-                transition: background 0.15s;
+                transition: all 0.2s ease;
                 opacity: 80%;
             }
-            .delete-btn {color: #ff3b3b; background: #540000;}
             .edit-btn:hover {
-                background: #e7f1fa;
-                color: #3069a4;
+                /* background: #eaeaea; */
+                background: #2d489f;
+                /* color: #3069a4; */
+                scale: 1.2;
             }
-
+            .edit-btn svg {
+                fill: #5ea8ff;
+            }
+            .delete-btn {
+                color: #ff3b3b;
+                background: #a7003e;
+                border: none;
+                transition: all 0.2s ease;
+            }
+            .delete-btn:hover {
+                background: #ff1f1f;
+                scale: 1.2;
+                
+            }
 
         </style>
         <script src="https://www.gstatic.com/firebasejs/12.0.0/firebase-app-compat.js"></script>
@@ -369,7 +388,9 @@
     <body>
         <div class="container">
             <div class="addBtn-container">
-                <button id="addPromptBtn" class="plus-btn" title="Add new prompt">+</button>
+                <button id="addPromptBtn" class="plus-btn" title="Add new prompt">
+                    <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="#e3e3e3"><path d="M440-120v-320H120v-80h320v-320h80v320h320v80H520v320h-80Z"/></svg>
+                </button>
                 <div id="prompt-count-text"></div>
 
             </div>
@@ -449,6 +470,12 @@
 
         <script>
             document.addEventListener("DOMContentLoaded", function () {
+
+                // These 2 variables needs to be changed for future variants/forks of this App.
+                const collectionName = "prompts_300h";
+                let firestoreUploadDownscaledHeight = 300; //Resizing height value of the photo in px
+                console.log("FireStore Collection: " + collectionName); // For Debugging
+
                 // Firebase config fill in as needed
                 const firebaseConfig = {
                     apiKey: "AIzaSyBGM_ws-4leOmvLLzIEU62y36cHLjYeezQ",
@@ -460,18 +487,12 @@
                 };
                 firebase.initializeApp(firebaseConfig);
                 const db = firebase.firestore();
-                let firestoreUploadDownscaledHeight = 600;
-                let promptsCount = 0;
-                let editingCardElement;
-                let editingPhotoBase64;
+                
+                let promptsCount = 0; // To Track total no. of entries in the database
+                let editingCardElement; // To access the currently editing card element
+                let editingPhotoBase64; // To store the existing base64 string before any change (if any)
 
-                /* function fileToBase64(file) {
-                    return new Promise((resolve) => {
-                        const reader = new FileReader();
-                        reader.onload = () => resolve(reader.result);
-                        reader.readAsDataURL(file);
-                    });
-                } */
+                // Function to resize the photo to firestoreUploadDownscaledHeight variable & Convert to Base64
                 function fileToBase64(file) {
                     return new Promise((resolve, reject) => {
                         const reader = new FileReader();
@@ -497,9 +518,7 @@
                     });
                 }
 
-
-                const cardsContainer =
-                    document.getElementById("cardsContainer");
+                const cardsContainer = document.getElementById("cardsContainer");
                 const modal = document.getElementById("modal");
                 const addPromptBtn = document.getElementById("addPromptBtn");
                 const closeModalBtn = document.getElementById("closeModal");
@@ -511,6 +530,7 @@
                 const collapseSvg = `<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                     </svg>`;
+                const deleteBtnSvg = `<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="#e3e3e3"><path d="m376-300 104-104 104 104 56-56-104-104 104-104-56-56-104 104-104-104-56 56 104 104-104 104 56 56Zm-96 180q-33 0-56.5-23.5T200-200v-520h-40v-80h200v-40h240v40h200v80h-40v520q0 33-23.5 56.5T680-120H280Zm400-600H280v520h400v-520Zm-400 0v520-520Z"/></svg>`;
 
                 function showModal() {
                     modal.classList.remove("hidden");
@@ -531,30 +551,26 @@
                     }
                 });
 
+                // Function to Add New Entry to the Firestore Database
                 modalForm.addEventListener("submit", async function (event) {
                     event.preventDefault();
                     let isSecondPromptEmpty = false;
-                    const photoFile =
-                        document.getElementById("photoInput").files[0];
-                    const title = document
-                        .getElementById("titleInput")
-                        .value.trim();
+                    const photoFile = document.getElementById("photoInput").files[0];
+                        
+                    const title = document.getElementById("titleInput").value.trim();
                     const aiName = document.getElementById("aiNameInput").value || "";
                     const modelName = document.getElementById("modelNameInput").value || "";
 
-                    const mainPrompt = document
-                        .getElementById("mainPromptInput")
-                        .value.trim();
-                    const secondaryPrompt = document
-                        .getElementById("secondaryPromptInput")
-                        .value.trim();
+                    const mainPrompt = document.getElementById("mainPromptInput").value.trim();
+                    const secondaryPrompt = document.getElementById("secondaryPromptInput").value.trim();
+
                     if (secondaryPrompt == "") {isSecondPromptEmpty = true;}
                     if (!photoFile || !title || !mainPrompt) {
                         alert("Photo, Title, and Main Prompt are required.");
                         return;
                     }
                     const photoBase64 = await fileToBase64(photoFile);
-                    //navigator.clipboard.writeText(photoBase64);
+                    //navigator.clipboard.writeText(photoBase64); // For Debugging
 
                     const newDoc = {
                         photo: photoBase64,
@@ -565,10 +581,10 @@
                         secondaryPrompt,
                         timestamp: Date.now()
                     };
-                    db.collection("prompts")
+                    db.collection(collectionName)
                         .add(newDoc)
                         .then((docRef) => {
-                            renderCard(newDoc, docRef.id, isSecondPromptEmpty);
+                            renderCard(newDoc, docRef.id, isSecondPromptEmpty); // To display the new card
                             modalForm.reset();
                             hideModal();
                             promptsCount++;
@@ -576,10 +592,11 @@
                         });
                 });
 
+                // Function to Edit/Update any existing entry to Firestore Database
                 document.getElementById('editModalForm').onsubmit = async function(e) {
                     e.preventDefault();
                     const id = window.editingDocId;
-                    console.log("Updated doc id: " + id);
+                    console.log("Updated doc id: " + id); // For Debugging
                     let isSecondPromptEmpty = false;
                     const aiName = document.getElementById("editAiNameInput").value || "";
                     const modelName = document.getElementById("editModelNameInput").value || "";
@@ -588,34 +605,27 @@
                     const secondaryPrompt = document.getElementById("editSecondaryPromptInput").value.trim();
                     // Get original photo unless replaced
                     let photo = editingPhotoBase64; // you can set this on open
-                    //console.log(photo);
+                    //console.log(photo); // For Debugging
                     const fileInput = document.getElementById("editPhotoInput");
                     if(fileInput.files && fileInput.files[0]) {
                         const photoBase64 = await fileToBase64(fileInput.files[0]);
                         photo = photoBase64;
                     }
                     let timestamp = Date.now();
+
                     // Update Firestore
-                    await db.collection("prompts").doc(id).set({
+                    await db.collection(collectionName).doc(id).set({
                         photo, aiName, modelName, title, mainPrompt, secondaryPrompt, timestamp
                     });
                     if (secondaryPrompt == "") {isSecondPromptEmpty = true;}
                     const oldCardElement = editingCardElement;
                     if (oldCardElement) oldCardElement.remove();
-                    /* const docRef = db.collection("prompts").doc(id); */
-                    db.collection("prompts").doc(id).get().then((doc) => {
+                    /* const docRef = db.collection(collectionName).doc(id); */
+                    db.collection(collectionName).doc(id).get().then((doc) => {
                         if (doc.exists) {
                             renderCard(doc.data(), doc.id, isSecondPromptEmpty);
                         }
                     });
-
-                    // Remove existing card, re-render (or re-render all)
-                    /* cardsContainer.innerHTML = "";
-                    db.collection("prompts").get().orderBy('timestamp', 'asc').then((querySnapshot) => {
-                        querySnapshot.forEach((doc) => {
-                        renderCard(doc.data(), doc.id, isSecondPromptEmpty);
-                        });
-                    }); */
 
                     document.getElementById('editModal').classList.add('hidden');
                     // Show a popup message (simple)
@@ -630,6 +640,7 @@
                     promptsCountText.textContent = `Prompts Count: ${promptsCount}`;
                 }
 
+                // Function to Display/Render the data to a Card
                 function renderCard(docData, id, isSecondPromptEmpty) {
                     const img = new Image();
                     img.src = docData.photo;
@@ -649,6 +660,7 @@
                         titleDiv.textContent = docData.title;
                         cardDiv.appendChild(titleDiv);
 
+                        // Container for Edit & Delete Buttons
                         const editDelBtnDiv = document.createElement("div");
                         editDelBtnDiv.className = "editDelBtnDiv";
                         cardDiv.appendChild(editDelBtnDiv);
@@ -660,20 +672,19 @@
                         editBtn.className = "edit-btn";
                         editDelBtnDiv.appendChild(editBtn);
 
-                        // Edit Button
+                        // Delete Button
                         const deleteBtn = document.createElement("button");
-                        deleteBtn.textContent = "X";
+                        deleteBtn.innerHTML = deleteBtnSvg;
                         deleteBtn.title = "Delete";
                         deleteBtn.className = "delete-btn";
                         editDelBtnDiv.appendChild(deleteBtn);
 
-
-                        // Expand/Collapse Button
+                        // Expand/Collapse Arrow Button
                         const expandBtn = document.createElement("button");
                         expandBtn.className = "expand-btn";
                         expandBtn.setAttribute("aria-expanded", "false");
                         expandBtn.innerHTML = expandSvg; // Down arrow
-                        //cardDiv.appendChild(expandBtn);
+                        //cardDiv.appendChild(expandBtn); // Older Code
                         titleDiv.appendChild(expandBtn);
 
                         // Details Panel
@@ -681,6 +692,7 @@
                         detailsDiv.className = "card-details";
                         detailsDiv.setAttribute("aria-hidden", "true");
                         
+                        // Container for Ai Name & Ai Model Data
                         const aiNameModelDiv = document.createElement("div");
                         aiNameModelDiv.className = "aiNameModelDiv";
 
@@ -698,7 +710,6 @@
 
                         detailsDiv.appendChild(aiNameModelDiv);
 
-
                         // Main prompt
                         const mainPromptLabel = document.createElement("span");
                         mainPromptLabel.className = "prompt-labels";
@@ -708,7 +719,7 @@
                         const mainPromptSpan = document.createElement("span");
                         mainPromptSpan.className = "main-prompt";
                         mainPromptSpan.textContent = docData.mainPrompt;
-                        addCopyClick(mainPromptSpan);
+                        addCopyClick(mainPromptSpan); // Apply "Click to" Function
                         detailsDiv.appendChild(mainPromptSpan);
 
                         // Secondary prompt
@@ -717,12 +728,10 @@
                         secondPromptLabel.textContent = "Prompt Additions";
                         detailsDiv.appendChild(secondPromptLabel);
 
-                        const secondaryPromptSpan =
-                            document.createElement("span");
+                        const secondaryPromptSpan = document.createElement("span");
                         secondaryPromptSpan.className = "secondary-prompt";
-                        secondaryPromptSpan.textContent =
-                            docData.secondaryPrompt;
-                        addCopyClick(secondaryPromptSpan);
+                        secondaryPromptSpan.textContent = docData.secondaryPrompt;
+                        addCopyClick(secondaryPromptSpan); // Apply "Click to" Function
                         detailsDiv.appendChild(secondaryPromptSpan);
 
                         // Final prompt: main prompt + newline + secondary prompt
@@ -733,34 +742,19 @@
 
                         const finalPromptDiv = document.createElement("span");
                         finalPromptDiv.className = "final-prompt";
-                        finalPromptDiv.textContent =
-                            docData.mainPrompt + "\n" + docData.secondaryPrompt;
-                        addCopyClick(finalPromptDiv);
+                        // Code to join Main & Prompt Additions Texts
+                        finalPromptDiv.textContent = docData.mainPrompt + "\n" + docData.secondaryPrompt;
+                        addCopyClick(finalPromptDiv); // Apply "Click to" Function
                         //finalPromptDiv.title = "Click to copy";
                         detailsDiv.appendChild(finalPromptDiv);
 
+                        // Code to Hide Prompt Additions & Final prompt fields if Prompt Additions is empty
                         if (isSecondPromptEmpty) {
                             hideEmptyTextFields(secondPromptLabel);
                             hideEmptyTextFields(secondaryPromptSpan);
                             hideEmptyTextFields(finalPromptLabel);
                             hideEmptyTextFields(finalPromptDiv);
                         }
-
-                        /* // Copy to clipboard
-                        finalPromptDiv.onclick = function () {
-                            navigator.clipboard
-                                .writeText(finalPromptDiv.textContent)
-                                .then(() => {
-                                    finalPromptDiv.classList.add("copied");
-                                    setTimeout(
-                                        () =>
-                                            finalPromptDiv.classList.remove(
-                                                "copied"
-                                            ),
-                                        1000
-                                    );
-                                });
-                        }; */
 
                         // Initial collapse
                         detailsDiv.classList.remove("expanded");
@@ -798,12 +792,12 @@
                             document.getElementById('editModal').classList.remove('hidden');
                             // Store current doc id being edited (best to use a variable outside renderCard, e.g., window.editingDocId)
                             window.editingDocId = id;
-                            console.log("Editing doc id: " + id);
+                            //console.log("Editing doc id: " + id); // For Debugging
                             editingCardElement = event.target.parentElement.parentElement;
-                            console.log(event.target.parentElement.parentElement);
+                            //console.log(event.target.parentElement.parentElement); // For Debugging
 
                             // Pre-fill fields
-                            //console.log(docData.photo);
+                            //console.log(docData.photo); // For Debugging
                             editingPhotoBase64 = docData.photo;
                             document.getElementById('editAiNameInput').value = docData.aiName || "";
                             document.getElementById('editModelNameInput').value = docData.modelName || "";
@@ -813,15 +807,32 @@
                             // Don't clear photo preview unless they pick a new file.
                         };
 
+                        deleteBtn.addEventListener("click", async () => {
+                            console.log("id of the card to be deleted: " + id); // For Debugging
+                            const confirmed = window.confirm("Delete this card Permanently?");
+                            if (!confirmed) {
+                                return; // Abort if user says No/Cancel
+                            }
+                            try {
+                                await db.collection(collectionName).doc(id).delete();  // delete from Firestore
+                                cardDiv.remove(); // remove card element from DOM
+                                alert("The Card is Deleted!");
+                                promptsCount = promptsCount-1;
+                                updatePromptsCount();
+                            } catch (error) {
+                                alert("Error deleting card: " + error.message);
+                            }
+                        });
 
-                        //cardsContainer.appendChild(cardDiv);
+                        // Add New Card as a First Card on Top
                         cardsContainer.prepend(cardDiv);
+                        //cardsContainer.appendChild(cardDiv); // Old Code
 
                     };
                 }
 
                 hideModal(); // Ensure modal hidden at start
-                db.collection("prompts")
+                db.collection(collectionName)
                     .orderBy('timestamp', 'asc')
                     .get()
                     .then((querySnapshot) => {
