@@ -180,7 +180,7 @@
             #photoInput {
                 margin-block: 1rem;
             }
-            #aiNameInput, #modelNameInput, #editModalForm Input {
+            #aiNameInput, #modelNameInput, #editModalForm Input, #rating {
                 margin-bottom: 1em;
                 box-sizing: border-box;
                 background: var(--bg-detail);
@@ -380,6 +380,13 @@
                 scale: 1.2;
                 
             }
+            .fav-btn {
+                background: transparent;
+                border: none;
+                transition: all 0.2s ease;
+                z-index: 1000;
+            }
+            
 
         </style>
         <script src="https://www.gstatic.com/firebasejs/12.0.0/firebase-app-compat.js"></script>
@@ -432,6 +439,14 @@
                         <option value="GPT-5 mini">
                     </datalist><br />
 
+                    <label>Rating</label>
+                    <input list="rating-datalist" id="rating"/>
+                    <datalist id="rating-datalist">
+                        <option value="Favourite">
+                        <option value="Good">
+                        <option value="-">
+                    </datalist><br />
+
                     <label>Main Prompt</label>
                     <textarea id="mainPromptInput" spellcheck="false"></textarea
                     ><br />
@@ -454,9 +469,11 @@
                 <label for="editPhotoInput">Photo</label>
                 <input type="file" id="editPhotoInput" accept="image/png, image/jpeg, image/webp"><br/>
                 <label>AI Name</label>
-                <input list="ai-names" id="editAiNameInput"/>
+                <input list="ai-names" id="editAiNameInput"/><br/>
                 <label>Model Name</label>
-                <input list="model-names" id="editModelNameInput"/>
+                <input list="model-names" id="editModelNameInput"/><br/>
+                <label>Rating</label>
+                <input list="rating-datalist" id="editRating"/><br/>
                 <label>Title</label>
                 <input type="text" id="editTitleInput"/><br/>
                 <label>Main Prompt</label>
@@ -531,6 +548,9 @@
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                     </svg>`;
                 const deleteBtnSvg = `<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="#e3e3e3"><path d="m376-300 104-104 104 104 56-56-104-104 104-104-56-56-104 104-104-104-56 56 104 104-104 104 56 56Zm-96 180q-33 0-56.5-23.5T200-200v-520h-40v-80h200v-40h240v40h200v80h-40v520q0 33-23.5 56.5T680-120H280Zm400-600H280v520h400v-520Zm-400 0v520-520Z"/></svg>`;
+                const favBtnSvg = `<svg width="24px" height="24px" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M1.24264 8.24264L8 15L14.7574 8.24264C15.553 7.44699 16 6.36786 16 5.24264V5.05234C16 2.8143 14.1857 1 11.9477 1C10.7166 1 9.55233 1.55959 8.78331 2.52086L8 3.5L7.21669 2.52086C6.44767 1.55959 5.28338 1 4.05234 1C1.8143 1 0 2.8143 0 5.05234V5.24264C0 6.36786 0.44699 7.44699 1.24264 8.24264Z"/>
+                </svg>`;
 
                 function showModal() {
                     modal.classList.remove("hidden");
@@ -560,6 +580,7 @@
                     const title = document.getElementById("titleInput").value.trim();
                     const aiName = document.getElementById("aiNameInput").value || "";
                     const modelName = document.getElementById("modelNameInput").value || "";
+                    const rating = document.getElementById("rating").value || "-";
 
                     const mainPrompt = document.getElementById("mainPromptInput").value.trim();
                     const secondaryPrompt = document.getElementById("secondaryPromptInput").value.trim();
@@ -577,6 +598,7 @@
                         aiName,
                         modelName,
                         title,
+                        rating,
                         mainPrompt,
                         secondaryPrompt,
                         timestamp: Date.now()
@@ -600,6 +622,7 @@
                     let isSecondPromptEmpty = false;
                     const aiName = document.getElementById("editAiNameInput").value || "";
                     const modelName = document.getElementById("editModelNameInput").value || "";
+                    const rating = document.getElementById("editRating").value || "-";
                     const title = document.getElementById("editTitleInput").value.trim();
                     const mainPrompt = document.getElementById("editMainPromptInput").value.trim();
                     const secondaryPrompt = document.getElementById("editSecondaryPromptInput").value.trim();
@@ -615,12 +638,12 @@
 
                     // Update Firestore
                     await db.collection(collectionName).doc(id).set({
-                        photo, aiName, modelName, title, mainPrompt, secondaryPrompt, timestamp
+                        photo, aiName, modelName, rating, title, mainPrompt, secondaryPrompt, timestamp
                     });
                     if (secondaryPrompt == "") {isSecondPromptEmpty = true;}
                     const oldCardElement = editingCardElement;
                     if (oldCardElement) oldCardElement.remove();
-                    /* const docRef = db.collection(collectionName).doc(id); */
+                    
                     db.collection(collectionName).doc(id).get().then((doc) => {
                         if (doc.exists) {
                             renderCard(doc.data(), doc.id, isSecondPromptEmpty);
@@ -678,6 +701,20 @@
                         deleteBtn.title = "Delete";
                         deleteBtn.className = "delete-btn";
                         editDelBtnDiv.appendChild(deleteBtn);
+
+                        // Fav. Button (Rating Value)
+                        const favBtn = document.createElement("button");
+                        favBtn.innerHTML = favBtnSvg;
+                        const svgPath = favBtn.querySelector("svg path");
+                        if (docData.rating ==="Favourite"){
+                            svgPath.setAttribute("fill", "red");
+                        }else {
+                            svgPath.setAttribute("fill", "#5b5b5b");
+                        }
+                        
+                        favBtn.title = "Add to Favourites";
+                        favBtn.className = "fav-btn";
+                        editDelBtnDiv.appendChild(favBtn);
 
                         // Expand/Collapse Arrow Button
                         const expandBtn = document.createElement("button");
@@ -801,6 +838,7 @@
                             editingPhotoBase64 = docData.photo;
                             document.getElementById('editAiNameInput').value = docData.aiName || "";
                             document.getElementById('editModelNameInput').value = docData.modelName || "";
+                            document.getElementById('editRating').value = docData.rating || "-";
                             document.getElementById('editTitleInput').value = docData.title;
                             document.getElementById('editMainPromptInput').value = docData.mainPrompt;
                             document.getElementById('editSecondaryPromptInput').value = docData.secondaryPrompt;
@@ -822,6 +860,33 @@
                             } catch (error) {
                                 alert("Error deleting card: " + error.message);
                             }
+                        });
+
+                        favBtn.addEventListener("click", function () {
+                            /* console.log("Clicked!!!"); // For Debugging */
+                            const svgPath = this.querySelector("svg path");
+                            //console.log(svgPath); // For Debugging
+                            if (!svgPath) {
+                                console.log("svg path not found!"); // For Debugging
+                                return;
+                            }
+                            // Get current color from inline fill attribute or computed style
+                            let currentFill = svgPath.getAttribute("fill");
+                            // console.log(docData.rating); // For Debugging
+                            const docRef = db.collection(collectionName).doc(id).get().then((doc) => {
+                                let currentRating = doc.data().rating;
+                                if (currentRating != "Favourite") {
+                                    // Code to change the rating to "Favourite"
+                                    let rating = "Favourite";
+                                    db.collection(collectionName).doc(id).set({ rating }, { merge: true });
+                                    svgPath.setAttribute("fill", "red");
+                                }else {
+                                    // Code to Remove the Rating "Favourite"
+                                    let rating = "-";
+                                    db.collection(collectionName).doc(id).set({ rating }, { merge: true });
+                                    svgPath.setAttribute("fill", "#5b5b5b");
+                                }
+                            });
                         });
 
                         // Add New Card as a First Card on Top
@@ -849,6 +914,8 @@
                         });
                         updatePromptsCount();
                     });
+
+
                 // Copy to clipboard helper with feedback
                 function addCopyClick(element) {
                     element.style.cursor = "pointer";
@@ -870,6 +937,7 @@
 
 
             });
+
         </script>
     </body>
 </html>
