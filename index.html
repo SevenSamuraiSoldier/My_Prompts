@@ -79,6 +79,14 @@
                 color: #8fb1cf;
                 font-weight: 700;
             }
+            #searchInput {
+                padding-block: 1rem;
+                padding-inline: 1rem;
+                color: var(--text-secondary);
+            }
+            #searchInput:focus-visible {
+                outline: 2px solid #3d3d3d;  
+            }
             .card {
                 background: var(--bg-card);
                 box-shadow: var(--shadow);
@@ -386,7 +394,10 @@
                 transition: all 0.2s ease;
                 z-index: 1000;
             }
-            
+            .hidden-cards {
+                display: none !important;
+            }
+
 
         </style>
         <script src="https://www.gstatic.com/firebasejs/12.0.0/firebase-app-compat.js"></script>
@@ -401,6 +412,12 @@
                 <div id="prompt-count-text"></div>
 
             </div>
+            <input
+                type="text"
+                id="searchInput"
+                placeholder="Search by Title, Main Prompt, or Rating.."
+            />
+
             
             <div id="cardsContainer"></div>
         </div>
@@ -673,6 +690,8 @@
                         const width = Math.round(400 * aspectRatio);
                         const cardDiv = document.createElement("div");
                         cardDiv.className = "card";
+                        // To Add Rating key value as an atrribute to the Card element
+                        cardDiv.setAttribute("data-rating", (docData.rating || "").toLowerCase());
                         const imgTag = document.createElement("img");
                         imgTag.src = docData.photo;
                         imgTag.style.height = "400px";
@@ -933,6 +952,45 @@
                     };
                 }
                 
+                const searchInput = document.getElementById("searchInput");
+
+                function filterCards() {
+                    const searchValue = searchInput.value.toLowerCase().trim();
+
+                    // Split by comma and trim, filter out empty terms
+                    const searchTerms = searchValue
+                        .split(",")
+                        .map(term => term.trim())
+                        .filter(term => term.length > 0);
+                    let matchCount = 0;
+                    // For each card, check if it matches all terms (AND)
+                    document.querySelectorAll(".card").forEach(card => {
+                        const title = card.querySelector(".title")?.textContent.toLowerCase() || "";
+                        const mainPrompt = card.querySelector(".main-prompt")?.textContent.toLowerCase() || "";
+                        const rating = (card.getAttribute("data-rating") || "").toLowerCase();
+                        
+                        // Check each search term against the 3 fields
+                        const matchesAll = searchTerms.every(term => {
+                            // To match term at start of word use regex with \b prefix
+                            const regex = new RegExp(`\\b${term}`, "i");
+                            return regex.test(title) || regex.test(mainPrompt) || regex.test(rating);
+                        });
+
+                        // Toggle hidden class
+                        if (matchesAll) {
+                            card.classList.remove("hidden-cards");
+                            matchCount ++;
+                        } else {
+                            card.classList.add("hidden-cards");
+                        }
+                    });
+                    promptsCount = matchCount;
+                    updatePromptsCount();
+                }
+
+                // Listen for input changes
+                searchInput.addEventListener("input", filterCards);
+
                 
 
 
