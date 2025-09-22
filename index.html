@@ -899,11 +899,13 @@
                                     let rating = "Favourite";
                                     db.collection(collectionName).doc(id).set({ rating }, { merge: true });
                                     svgPath.setAttribute("fill", "red");
+                                    cardDiv.setAttribute("data-rating", (rating).toLowerCase());
                                 }else {
                                     // Code to Remove the Rating "Favourite"
                                     let rating = "-";
                                     db.collection(collectionName).doc(id).set({ rating }, { merge: true });
                                     svgPath.setAttribute("fill", "#5b5b5b");
+                                    cardDiv.setAttribute("data-rating", (rating).toLowerCase());
                                 }
                             });
                         });
